@@ -1,12 +1,10 @@
 import sys
 sys.path.append("../mutation_analysis_by_XGBoost")
 
-import csv
 import pandas as pd
 import os
 from objects.PDBData import PDBData
 from biophysic_prop.PSSM import PSSM
-from objects.Selector import ChainAndAminoAcidSelect
 
 def validate_chain_id(given_pdb_id):
     pdb_id = row["pdb_id"].lower()[:4]
@@ -26,22 +24,18 @@ pdb_dir = "data/pdbs/"
 pdbs_clean_dir = "data/pdbs_clean/"
 fastas_dir = "data/fastas/"
 CIF = "mmCif"
-input_file_path = "data/dataset_3_train.xlsx"
-n_rows_to_skip = 0
-n_rows_to_evalutate = 2
-N_neighbors = 15
-
+input_file_path = "data/dataset_5_train.csv"
      
 # object initialization
 PDBData = PDBData(pdb_dir=pdb_dir)
 pssm = PSSM()
 
 # data generation
-dfs = pd.read_excel(input_file_path)
+dfs = pd.read_csv(input_file_path)
 
     
-# i = int(os.environ["SLURM_ARRAY_TASK_ID"])    
-i=161
+i = int(os.environ["SLURM_ARRAY_TASK_ID"])    
+# i=161
 unique_pdb_ids = dfs["pdb_id"].drop_duplicates().to_list()
 unique_pdb_ids.sort()
 ith_pdb_id = unique_pdb_ids[i]
@@ -49,30 +43,13 @@ ith_protein_mutation_dfs = dfs[dfs["pdb_id"]==ith_pdb_id]
 # print(ith_protein_mutation_dfs)
 
 for i, row in ith_protein_mutation_dfs.iterrows():
-    # if i+1 <= n_rows_to_skip: return
-    
-    pdb_id = row["pdb_id"].lower()[:4]
-    if pdb_id=="2a01": continue
-    
-    PDBData.download_structure(pdb_id=pdb_id)
-    
-    chain_id = validate_chain_id(row["pdb_id"])
-    mutation = row["mutation"]
-    mutation_site = int(row["mutation_site"])
-    wild_residue = row["wild_residue"]
-    mutant_residue = row["mutant_residue"]
-    row=[pdb_id, chain_id, mutation, row["ddG"], wild_residue, mutation_site, mutant_residue]
+    pdb_id, chain_id, mutation, mutation_site, wild_residue, mutant_residue = row["pdb_id"], row["chain_id"], row["mutation"], int(row["mutation_site"]), row["wild_residue"], row["mutant_residue"]
    
-    clean_pdb_file = pdbs_clean_dir+pdb_id+chain_id+".pdb"
-    clean_wild_protein_structure = PDBData.clean(pdb_id=pdb_id, chain_id=chain_id, selector=ChainAndAminoAcidSelect(chain_id))
     wild_fasta_file = fastas_dir+pdb_id+chain_id+".fasta"
     mutant_fasta_file = fastas_dir+pdb_id+chain_id+"_"+mutation+".fasta"
-    PDBData.generate_fasta_from_pdb(pdb_id, chain_id, clean_pdb_file, save_as_fasta=True, output_fasta_dir="data/fastas/")
-    PDBData.create_mutant_fasta_file(wild_fasta_file, mutant_fasta_file, mutation_site, wild_residue)
-    residue_ids_dict = PDBData.get_residue_ids_dict(pdb_file=clean_pdb_file, chain_id=chain_id)
-    zero_based_mutation_site = residue_ids_dict.get(mutation_site)
-    print("Row no:{}->{}{}, mutation:{}, zero_based_mutation_site:{}".format(i+1, pdb_id, chain_id, mutation, zero_based_mutation_site))
-
 
     pssm.set_up(wild_fasta_file)
     pssm.set_up(mutant_fasta_file)
+
+    open("outputs/argo_logs/pssms_done.txt", "a") as f:
+    f.write("{}, {}, {}\n".format(i, wild_fasta_file, mutant_fasta_file))

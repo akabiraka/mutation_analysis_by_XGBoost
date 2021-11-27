@@ -13,7 +13,7 @@ CIF = "mmCif"
 input_file_path = "data/dataset_5_train.csv"
 # input_file_path = "data/dataset_5_test.csv"
 n_rows_to_skip = 0
-n_rows_to_evalutate = 20#0000
+n_rows_to_evalutate = 200000
 
 # object initialization
 pdb_data = PDBData(pdb_dir=pdb_dir)
